@@ -12,11 +12,20 @@ fn main() {
         .insert_resource(ClearColor(Color::rgb(0.04, 0.04, 0.04)))
         .add_startup_system(setup_camera)
         .add_startup_system(spawn_snake)
-        .add_system(snake_movement)
+        .add_system(
+            snake_movement_input
+                .label(SnakeMovement::Input)
+                .before(SnakeMovement::Movement),
+        )
         .add_system_set(
             SystemSet::new()
-            .with_run_criteria(FixedTimestep::step(1.0))
-            .with_system(food_spawner)
+                .with_run_criteria(FixedTimestep::step(0.150))
+                .with_system(snake_movement),
+        )
+        .add_system_set(
+            SystemSet::new()
+                .with_run_criteria(FixedTimestep::step(1.0))
+                .with_system(food_spawner),
         )
         .add_system_set_to_stage(
             CoreStage::PostUpdate,
@@ -39,7 +48,9 @@ fn setup_camera(mut commands: Commands) {
 }
 
 #[derive(Component)]
-struct SnakeHead;
+struct SnakeHead {
+    direction: Direction,
+}
 
 fn spawn_snake(mut commands: Commands) {
     commands
@@ -54,27 +65,39 @@ fn spawn_snake(mut commands: Commands) {
             },
             ..Default::default()
         })
-        .insert(SnakeHead)
+        .insert(SnakeHead {
+            direction: Direction::Up,
+        })
         .insert(Position { x: 3, y: 3 })
         .insert(Size::square(0.8));
 }
 
-fn snake_movement(
-    keyboard_input: Res<Input<KeyCode>>,
-    mut head_positions: Query<&mut Position, With<SnakeHead>>,
-) {
-    for mut pos in head_positions.iter_mut() {
-        if keyboard_input.pressed(KeyCode::Left) {
-            pos.x -= 1;
+fn snake_movement_input(keyboard_input: Res<Input<KeyCode>>, mut heads: Query<&mut SnakeHead>) {
+    if let Some(mut head) = heads.iter_mut().next() {
+        let dir: Direction = if keyboard_input.pressed(KeyCode::Left) {
+            Direction::Left
+        } else if keyboard_input.pressed(KeyCode::Down) {
+            Direction::Down
+        } else if keyboard_input.pressed(KeyCode::Up) {
+            Direction::Up
+        } else if keyboard_input.pressed(KeyCode::Right) {
+            Direction::Right
+        } else {
+            head.direction
+        };
+        if dir != head.direction.opposite() {
+            head.direction = dir;
         }
-        if keyboard_input.pressed(KeyCode::Right) {
-            pos.x += 1;
-        }
-        if keyboard_input.pressed(KeyCode::Down) {
-            pos.y -= 1;
-        }
-        if keyboard_input.pressed(KeyCode::Up) {
-            pos.y += 1;
+    }
+}
+
+fn snake_movement(mut head_positions: Query<(&mut Position, &SnakeHead)>) {
+    for (mut pos, head) in head_positions.iter_mut() {
+        match &head.direction {
+            Direction::Left => pos.x -= 1,
+            Direction::Right => pos.x += 1,
+            Direction::Down => pos.y -= 1,
+            Direction::Up => pos.y += 1,
         }
     }
 }
@@ -145,4 +168,29 @@ fn food_spawner(mut commands: Commands) {
             y: (random::<f32>() * ARENA_HEIGHT as f32) as i32,
         })
         .insert(Size::square(0.6));
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum Direction {
+    Left,
+    Up,
+    Right,
+    Down,
+}
+
+impl Direction {
+    fn opposite(self) -> Self {
+        match self {
+            Self::Left => Self::Right,
+            Self::Right => Self::Left,
+            Self::Up => Self::Down,
+            Self::Down => Self::Up,
+        }
+    }
+}
+
+#[derive(SystemLabel, Debug, Hash, PartialEq, Eq, Clone)]
+enum SnakeMovement {
+    Input,
+    Movement,
 }
