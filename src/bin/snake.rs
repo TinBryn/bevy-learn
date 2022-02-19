@@ -94,10 +94,30 @@ fn snake_movement_input(keyboard_input: Res<Input<KeyCode>>, mut heads: Query<&m
 fn snake_movement(mut head_positions: Query<(&mut Position, &SnakeHead)>) {
     for (mut pos, head) in head_positions.iter_mut() {
         match &head.direction {
-            Direction::Left => pos.x -= 1,
-            Direction::Right => pos.x += 1,
-            Direction::Down => pos.y -= 1,
-            Direction::Up => pos.y += 1,
+            Direction::Left => {
+                pos.x -= 1;
+                if pos.x < 0 {
+                    pos.x += ARENA_WIDTH as i32;
+                }
+            }
+            Direction::Right => {
+                pos.x += 1;
+                if pos.x >= ARENA_WIDTH as i32 {
+                    pos.x -= ARENA_WIDTH as i32;
+                }
+            }
+            Direction::Down => {
+                pos.y -= 1;
+                if pos.y < 0 {
+                    pos.y += ARENA_HEIGHT as i32;
+                }
+            }
+            Direction::Up => {
+                pos.y += 1;
+                if pos.y >= ARENA_HEIGHT as i32 {
+                    pos.y -= ARENA_HEIGHT as i32;
+                }
+            }
         }
     }
 }
