@@ -74,17 +74,7 @@ fn spawn_snake(mut commands: Commands) {
 
 fn snake_movement_input(keyboard_input: Res<Input<KeyCode>>, mut heads: Query<&mut SnakeHead>) {
     if let Some(mut head) = heads.iter_mut().next() {
-        let dir: Direction = if keyboard_input.pressed(KeyCode::Left) {
-            Direction::Left
-        } else if keyboard_input.pressed(KeyCode::Down) {
-            Direction::Down
-        } else if keyboard_input.pressed(KeyCode::Up) {
-            Direction::Up
-        } else if keyboard_input.pressed(KeyCode::Right) {
-            Direction::Right
-        } else {
-            head.direction
-        };
+        let dir: Direction = Direction::from_keyboard_or(keyboard_input, head.direction);
         if dir != head.direction.opposite() {
             head.direction = dir;
         }
@@ -203,6 +193,20 @@ impl Direction {
             Self::Right => Self::Left,
             Self::Up => Self::Down,
             Self::Down => Self::Up,
+        }
+    }
+
+    fn from_keyboard_or(keyboard: Res<Input<KeyCode>>, default: Self) -> Self {
+        if keyboard.pressed(KeyCode::Left) {
+            Direction::Left
+        } else if keyboard.pressed(KeyCode::Down) {
+            Direction::Down
+        } else if keyboard.pressed(KeyCode::Up) {
+            Direction::Up
+        } else if keyboard.pressed(KeyCode::Right) {
+            Direction::Right
+        } else {
+            default
         }
     }
 }
